@@ -5,18 +5,18 @@ export default function Counter() {
   const [count, setCount] = useState(0);
 
   return (
-    <div style={{ padding: "20px", textAlign: "center" }}>
+    <div className="p-4 text-center">
       <h3>Counter: {count}</h3>
-      <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+      <div className="flex gap-2 justify-center">
         <button
           onClick={() => setCount((prev) => prev - 1)}
-          style={{ padding: "8px 16px", cursor: "pointer" }}
+          className="px-4 py-2 cursor-pointer bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
         >
           Decrease
         </button>
         <button
           onClick={() => setCount((prev) => prev + 1)}
-          style={{ padding: "8px 16px", cursor: "pointer" }}
+          className="px-4 py-2 cursor-pointer bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
         >
           Increase
         </button>

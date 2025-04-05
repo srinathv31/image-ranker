@@ -4,7 +4,7 @@ import Counter from "./components/Counter";
 
 export default function App() {
   return (
-    <div style={{ textAlign: "center", padding: "20px" }}>
+    <div className="text-center p-4">
       <h2>Hello from React!</h2>
       <p>Welcome to your Electron + React + TypeScript app!</p>
       <Counter />

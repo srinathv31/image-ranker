@@ -1,3 +1,4 @@
+import random
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,7 +19,8 @@ def read_root():
 
 @app.get("/dummy")
 def dummy_endpoint():
-    return {"message": "Hello from the AI microservice!"}
+    # return a random number between 0 and 100
+    return {"message": random.randint(0, 100)}
 
 if __name__ == "__main__":
     import uvicorn

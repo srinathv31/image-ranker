@@ -1,20 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "./ui/button";
-
-// Define the window interface with our API
-declare global {
-  interface Window {
-    api: {
-      ping: () => Promise<{ message: string }>;
-      fetchFromPython: (endpoint: string) => Promise<any>;
-    };
-  }
-}
+import { pingBackend } from "../lib/api/ping";
 
 export default function PingBackend() {
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ["ping"],
-    queryFn: () => window.api.ping(),
+    queryFn: pingBackend,
   });
 
   return (
@@ -26,11 +17,9 @@ export default function PingBackend() {
           Ping Backend
         </Button>
 
-        {isLoading && <span>Loading...</span>}
+        {isPending && <span>Loading...</span>}
         {isError && (
-          <span className="text-red-500">
-            Error: {(error as Error).message}
-          </span>
+          <span className="text-red-500">Error: {error.message}</span>
         )}
         {data && (
           <span className="text-green-500">Response: {data.message}</span>

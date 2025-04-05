@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# React Components
+- When creating React components always make them a default function. Do not call them React.FC.
+- Always use Typescript

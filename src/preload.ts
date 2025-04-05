@@ -20,7 +20,7 @@ contextBridge.exposeInMainWorld("api", {
   // Add more API methods as needed
   ping: async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/dummy");
+      const response = await fetch("http://127.0.0.1:8000/");
       return await response.json();
     } catch (error) {
       console.error("Error pinging API:", error);

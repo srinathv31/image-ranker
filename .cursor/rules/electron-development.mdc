@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Electron Development
+- All electron files are in the src directory
+- The src directory is the only place any electron code files should go
+- Electron configuration files should be in the root of the project
+- An electron directory should never be created
+- index.ts, preload.ts, and renderer.ts are the electron files. If more are needed just add them to the root of the src/ directory 

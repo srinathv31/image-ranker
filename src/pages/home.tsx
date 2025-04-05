@@ -1,7 +1,29 @@
 import StatusIndicator from "../components/StatusIndicator";
 import { Button } from "../components/ui/button";
+import FolderDialog from "../components/FolderDialog";
+import { uploadFolder } from "../lib/api/folder";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export default function Home() {
+  const folderMutation = useMutation({
+    mutationFn: uploadFolder,
+    onSuccess: (data) => {
+      toast.success("Folder uploaded successfully");
+      console.log("Folder processed:", data);
+    },
+    onError: (error) => {
+      toast.error("Failed to upload folder");
+      console.error("Error processing folder:", error);
+    },
+  });
+
+  const handleFolderSelect = async (folderPath: string) => {
+    // make the path url encoded
+    const encodedFolderPath = encodeURIComponent(folderPath);
+    folderMutation.mutate(encodedFolderPath);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Hero Section */}
@@ -18,7 +40,10 @@ export default function Home() {
             application for managing and rating your image collections.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button size="lg">Get Started</Button>
+            <FolderDialog
+              onFolderSelect={handleFolderSelect}
+              isLoading={folderMutation.isPending}
+            />
             <Button size="lg" variant="outline">
               Learn More
             </Button>

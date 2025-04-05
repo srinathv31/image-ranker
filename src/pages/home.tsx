@@ -1,20 +1,20 @@
 import StatusIndicator from "../components/StatusIndicator";
 import { Button } from "../components/ui/button";
 import FolderDialog from "../components/FolderDialog";
-import { uploadFolder } from "../lib/api/folder";
+import { analyzeImages } from "../lib/api/images";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export default function Home() {
   const folderMutation = useMutation({
-    mutationFn: uploadFolder,
+    mutationFn: analyzeImages,
     onSuccess: (data) => {
-      toast.success("Folder uploaded successfully");
-      console.log("Folder processed:", data);
+      toast.success("Images analyzed successfully");
+      console.log("Images analyzed:", data);
     },
     onError: (error) => {
-      toast.error("Failed to upload folder");
-      console.error("Error processing folder:", error);
+      toast.error("Failed to analyze images");
+      console.error("Error analyzing images:", error);
     },
   });
 
@@ -48,6 +48,38 @@ export default function Home() {
               Learn More
             </Button>
           </div>
+          {folderMutation.data && (
+            <div className="mt-4 p-6 bg-white shadow-md rounded-lg">
+              <h2 className="text-3xl font-bold mb-4 text-gray-800">
+                Top Images
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {folderMutation.data.top_images
+                  .sort((a, b) => b.score - a.score) // Sort by score descending
+                  .map((image, index) => (
+                    <div
+                      key={image.filename}
+                      className="flex flex-col items-center bg-gray-100 p-4 rounded-lg transition-transform transform hover:scale-105"
+                    >
+                      <img
+                        src={`data:image/jpeg;base64,${image.base64_image}`}
+                        alt={image.filename}
+                        className="w-full h-32 object-cover rounded-md mb-2"
+                      />
+                      {/* <h3 className="text-lg text-wrap font-semibold text-gray-700">
+                        {image.filename}
+                      </h3> */}
+                      <p className="text-sm text-gray-500">
+                        Rank: {index + 1} {/* Display rank */}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Score: {image.score.toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Features Section */}

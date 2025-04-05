@@ -3,3 +3,6 @@ uvicorn==0.27.1
 python-multipart==0.0.9
 Pillow  # Let pip choose the compatible version
 numpy  # Let pip choose the compatible version 
+transformers
+torch==2.2.0
+torchvision==0.17.0

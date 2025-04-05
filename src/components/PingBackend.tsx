@@ -1,20 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "./ui/button";
 
-interface PingResponse {
-  message: string;
+// Define the window interface with our API
+declare global {
+  interface Window {
+    api: {
+      ping: () => Promise<{ message: string }>;
+      fetchFromPython: (endpoint: string) => Promise<any>;
+    };
+  }
 }
 
 export default function PingBackend() {
-  const { data, isLoading, isError, error, refetch } = useQuery<PingResponse>({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["ping"],
-    queryFn: async () => {
-      const response = await fetch("http://127.0.0.1:8000/dummy");
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-      return response.json();
-    },
+    queryFn: () => window.api.ping(),
   });
 
   return (
@@ -28,7 +28,9 @@ export default function PingBackend() {
 
         {isLoading && <span>Loading...</span>}
         {isError && (
-          <span className="text-red-500">Error: {error.message}</span>
+          <span className="text-red-500">
+            Error: {(error as Error).message}
+          </span>
         )}
         {data && (
           <span className="text-green-500">Response: {data.message}</span>

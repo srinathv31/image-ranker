@@ -10,6 +10,8 @@ if (require("electron-squirrel-startup")) {
   app.quit();
 }
 
+const isDevelopment = process.env.NODE_ENV !== "production";
+
 const createWindow = (): void => {
   // Set up CSP
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -17,20 +19,39 @@ const createWindow = (): void => {
       responseHeaders: {
         ...details.responseHeaders,
         "Content-Security-Policy": [
-          "default-src 'self' http://127.0.0.1:8000;",
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval';",
-          "style-src 'self' 'unsafe-inline';",
-          "connect-src 'self' http://127.0.0.1:8000;",
+          // Allow loading resources from app origin and dev server
+          "default-src 'self' http://localhost:3000;",
+          // In dev, we need unsafe-eval for webpack hot reload
+          `script-src 'self' 'unsafe-inline' ${isDevelopment ? "'unsafe-eval'" : ""};`,
+          // Allow styles from webpack dev server
+          "style-src 'self' 'unsafe-inline' http://localhost:3000;",
+          // Fonts from our app only
+          "font-src 'self';",
+          // Images from our app and API
+          "img-src 'self' http://127.0.0.1:8000 data:;",
+          // Connect to our API and WebSocket for dev
+          "connect-src 'self' http://127.0.0.1:8000 ws://localhost:3000 http://localhost:3000;",
+          // Restrict object-src
+          "object-src 'none';",
+          // Form submissions
+          "form-action 'self';",
+          // Base URL restriction
+          "base-uri 'self';",
+          // Frame restrictions
+          "frame-ancestors 'none';",
         ].join(" "),
       },
     });
   });
 
-  // Create the browser window.
+  // Create the browser window with secure defaults
   const mainWindow = new BrowserWindow({
-    height: 600,
-    width: 800,
+    width: 1200,
+    height: 800,
     webPreferences: {
+      nodeIntegration: false, // Disable node integration
+      contextIsolation: true, // Enable context isolation
+      webSecurity: true, // Ensure web security is enabled
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
     },
   });

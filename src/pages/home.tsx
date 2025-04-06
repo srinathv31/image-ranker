@@ -8,9 +8,10 @@ import {
   ImageAnalysisComplete,
   ImageAnalysisProgress,
 } from "../lib/api/images";
-import { useState, FormEvent } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Progress } from "../components/ui/progress";
+import { Sparkles, Search } from "lucide-react";
 
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -21,37 +22,19 @@ export default function Home() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
 
-  const handleFolderSelect = async (folderPath: string) => {
-    setSelectedFolder(folderPath);
-    setIsProcessing(true);
-    setProgress(null);
+  const handleFolderSelect = (folderPath: string) => {
+    setSelectedFolder(folderPath || null);
     setResults(null);
-
-    try {
-      const encodedFolderPath = encodeURIComponent(folderPath);
-      for await (const update of streamAnalyzeImages(encodedFolderPath)) {
-        if (update.type === "progress") {
-          setProgress(update);
-        } else if (update.type === "complete") {
-          setResults(update.top_images);
-          toast.success("Images analyzed successfully");
-        }
-      }
-    } catch (error) {
-      toast.error("Failed to analyze images");
-      console.error("Error analyzing images:", error);
-    } finally {
-      setIsProcessing(false);
-    }
+    setProgress(null);
+    setPrompt("");
   };
 
-  const handlePromptSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const analyzeImages = async (usePrompt = false) => {
     if (!selectedFolder) {
       toast.error("Please select a folder first");
       return;
     }
-    if (!prompt.trim()) {
+    if (usePrompt && !prompt.trim()) {
       toast.error("Please enter a prompt");
       return;
     }
@@ -62,10 +45,11 @@ export default function Home() {
 
     try {
       const encodedFolderPath = encodeURIComponent(selectedFolder);
-      for await (const update of streamAnalyzeImagesWithPrompt(
-        encodedFolderPath,
-        prompt,
-      )) {
+      const stream = usePrompt
+        ? streamAnalyzeImagesWithPrompt(encodedFolderPath, prompt)
+        : streamAnalyzeImages(encodedFolderPath);
+
+      for await (const update of stream) {
         if (update.type === "progress") {
           setProgress(update);
         } else if (update.type === "complete") {
@@ -83,7 +67,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Hero Section */}
       <main className="flex-grow container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <h1 className="text-6xl font-bold tracking-tight">
@@ -96,106 +79,121 @@ export default function Home() {
             Organize and rank your images with ease. A powerful desktop
             application for managing and rating your image collections.
           </p>
-          <div className="flex gap-4 justify-center">
-            <FolderDialog
-              onFolderSelect={handleFolderSelect}
-              isLoading={isProcessing}
-            />
-            <Button size="lg" variant="outline">
-              Learn More
-            </Button>
+
+          {/* Step 1: Folder Selection */}
+          <div className="mt-12">
+            <div className="bg-card border rounded-lg p-6">
+              <h2 className="text-2xl font-semibold mb-6">
+                Step 1: Select Folder
+              </h2>
+              <FolderDialog
+                onFolderSelect={handleFolderSelect}
+                selectedFolder={selectedFolder}
+                isLoading={isProcessing}
+              />
+            </div>
           </div>
 
-          {/* Prompt Form */}
-          <form
-            onSubmit={handlePromptSubmit}
-            className="max-w-md mx-auto space-y-4"
-          >
-            <Input
-              type="text"
-              placeholder="Enter a prompt to find similar images..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              disabled={isProcessing || !selectedFolder}
-            />
-            <Button
-              type="submit"
-              disabled={isProcessing || !selectedFolder || !prompt.trim()}
-              className="w-full"
-            >
-              {isProcessing ? "Processing..." : "Find Similar Images"}
-            </Button>
-          </form>
+          {/* Step 2: Analysis Options */}
+          {selectedFolder && (
+            <div className="bg-card border rounded-lg p-6">
+              <h2 className="text-2xl font-semibold mb-6">
+                Step 2: Choose Analysis Method
+              </h2>
+              <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                {/* Most Aesthetic Option */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Most Aesthetic</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Find the most visually appealing images in your collection
+                  </p>
+                  <Button
+                    onClick={() => analyzeImages(false)}
+                    disabled={isProcessing}
+                    className="w-full"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    {isProcessing ? "Processing..." : "Find Best Images"}
+                  </Button>
+                </div>
+
+                {/* Custom Prompt Option */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Custom Search</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Find images that match your specific description
+                  </p>
+                  <div className="space-y-2">
+                    <Input
+                      type="text"
+                      placeholder="Enter your description..."
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      disabled={isProcessing}
+                    />
+                    <Button
+                      onClick={() => analyzeImages(true)}
+                      disabled={isProcessing || !prompt.trim()}
+                      className="w-full"
+                    >
+                      <Search className="w-4 h-4 mr-2" />
+                      {isProcessing ? "Processing..." : "Search Images"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Progress Section */}
           {progress && (
-            <div className="mt-4 space-y-4">
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Processing: {progress.currentImage}</span>
-                <span>{Math.round(progress.percentage)}%</span>
+            <div className="bg-card border rounded-lg p-6">
+              <div className="space-y-4">
+                <div className="flex justify-between text-sm">
+                  <span>Processing: {progress.currentImage}</span>
+                  <span>{Math.round(progress.percentage)}%</span>
+                </div>
+                <Progress value={progress.percentage} className="w-full" />
+                <p className="text-sm text-muted-foreground">
+                  Processed {progress.current} of {progress.total} images
+                </p>
               </div>
-              <Progress value={progress.percentage} className="w-full" />
-              <p className="text-sm text-muted-foreground">
-                Processed {progress.current} of {progress.total} images
-              </p>
             </div>
           )}
 
           {/* Results Section */}
           {results && (
-            <div className="mt-4 p-6 bg-white shadow-md rounded-lg">
-              <h2 className="text-3xl font-bold mb-4 text-gray-800">
-                Top Images
-              </h2>
+            <div className="bg-card border rounded-lg p-6">
+              <h2 className="text-2xl font-semibold mb-6">Results</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {results
                   .sort((a, b) => b.score - a.score)
                   .map((image, index) => (
                     <div
                       key={image.filename}
-                      className="flex flex-col items-center bg-gray-100 p-4 rounded-lg transition-transform transform hover:scale-105"
+                      className="group relative bg-muted rounded-lg overflow-hidden transition-all duration-300 hover:scale-[1.02]"
                     >
                       <img
                         src={`data:image/jpeg;base64,${image.base64_image}`}
                         alt={image.filename}
-                        className="w-full h-32 object-cover rounded-md mb-2"
+                        className="w-full aspect-square object-cover"
                       />
-                      <p className="text-sm text-gray-500">Rank: {index + 1}</p>
-                      <p className="text-sm text-gray-500">
-                        Score: {image.score.toFixed(2)}
-                      </p>
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                        <p className="text-white font-medium">
+                          Rank: {index + 1}
+                        </p>
+                        <p className="text-white/80 text-sm">
+                          Score: {image.score.toFixed(2)}
+                        </p>
+                      </div>
                     </div>
                   ))}
               </div>
             </div>
           )}
         </div>
-
-        {/* Features Section */}
-        <div className="mt-24 grid md:grid-cols-3 gap-8">
-          <div className="p-6 rounded-lg border bg-card">
-            <h3 className="text-xl font-semibold mb-3">Easy Organization</h3>
-            <p className="text-muted-foreground">
-              Effortlessly organize your images into collections and categories.
-            </p>
-          </div>
-          <div className="p-6 rounded-lg border bg-card">
-            <h3 className="text-xl font-semibold mb-3">Smart Ranking</h3>
-            <p className="text-muted-foreground">
-              Rank and rate your images with an intuitive interface.
-            </p>
-          </div>
-          <div className="p-6 rounded-lg border bg-card">
-            <h3 className="text-xl font-semibold mb-3">Fast Search</h3>
-            <p className="text-muted-foreground">
-              Quickly find the images you need with powerful search
-              capabilities.
-            </p>
-          </div>
-        </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t">
         <div className="container mx-auto px-4 py-6 flex justify-between items-center">
           <p className="text-sm text-muted-foreground">

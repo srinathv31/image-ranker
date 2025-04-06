@@ -7,3 +7,7 @@ alwaysApply: true
 # React Components
 - When creating React components always make them a default function. Do not call them React.FC.
 - Always use Typescript
+
+# UI
+- Leverage shadcn/ui when possible
+- Use the shadcn cli tool: ex, npx shadcn@latest add button

@@ -15,6 +15,8 @@ export type ImageAnalysisComplete = {
   }[];
 };
 
+export type ProcessingMode = "batch" | "single";
+
 export type ImageAnalysisResponse =
   | ImageAnalysisProgress
   | ImageAnalysisComplete;
@@ -25,8 +27,9 @@ type AsyncIterableResponse = {
 
 export async function* streamAnalyzeImages(
   folderPath: string,
+  processingMode: ProcessingMode = "batch",
 ): AsyncGenerator<ImageAnalysisResponse, void, unknown> {
-  const payload = { folder_path: folderPath };
+  const payload = { folder_path: folderPath, processing_mode: processingMode };
   console.log("Sending request payload:", payload);
 
   const response = await window.api.fetchFromPython<AsyncIterableResponse>(
@@ -54,8 +57,13 @@ export async function* streamAnalyzeImages(
 export async function* streamAnalyzeImagesWithPrompt(
   folderPath: string,
   prompt: string,
+  processingMode: ProcessingMode = "batch",
 ): AsyncGenerator<ImageAnalysisResponse, void, unknown> {
-  const payload = { folder_path: folderPath, prompt };
+  const payload = {
+    folder_path: folderPath,
+    prompt,
+    processing_mode: processingMode,
+  };
   console.log("Sending request payload:", payload);
 
   const response = await window.api.fetchFromPython<AsyncIterableResponse>(

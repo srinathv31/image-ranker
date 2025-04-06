@@ -7,11 +7,19 @@ import {
   streamAnalyzeImagesWithPrompt,
   ImageAnalysisComplete,
   ImageAnalysisProgress,
+  ProcessingMode,
 } from "../lib/api/images";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Progress } from "../components/ui/progress";
-import { Sparkles, Search } from "lucide-react";
+import { Sparkles, Search, Settings2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -21,6 +29,7 @@ export default function Home() {
   >(null);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
+  const [processingMode, setProcessingMode] = useState<ProcessingMode>("batch");
 
   const handleFolderSelect = (folderPath: string) => {
     setSelectedFolder(folderPath || null);
@@ -46,8 +55,21 @@ export default function Home() {
     try {
       const encodedFolderPath = encodeURIComponent(selectedFolder);
       const stream = usePrompt
-        ? streamAnalyzeImagesWithPrompt(encodedFolderPath, prompt)
-        : streamAnalyzeImages(encodedFolderPath);
+        ? streamAnalyzeImagesWithPrompt(
+            encodedFolderPath,
+            prompt,
+            processingMode,
+          )
+        : streamAnalyzeImages(encodedFolderPath, processingMode);
+
+      // render the progress bar so it doesn't wait for the first batch
+      setProgress({
+        type: "progress",
+        current: 0,
+        total: 0,
+        percentage: 0,
+        currentImage: "",
+      });
 
       for await (const update of stream) {
         if (update.type === "progress") {
@@ -141,6 +163,26 @@ export default function Home() {
                     </Button>
                   </div>
                 </div>
+              </div>
+
+              {/* Processing Mode Selector */}
+              <div className="mt-6 flex justify-end items-center gap-2">
+                <Settings2 className="w-4 h-4 text-muted-foreground" />
+                <Select
+                  disabled={isProcessing}
+                  value={processingMode}
+                  onValueChange={(value: ProcessingMode) =>
+                    setProcessingMode(value)
+                  }
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Processing Mode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="batch">Batch Mode (Faster)</SelectItem>
+                    <SelectItem value="single">Single Mode (Slower)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}

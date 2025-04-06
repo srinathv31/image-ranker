@@ -51,6 +51,35 @@ export async function* streamAnalyzeImages(
   }
 }
 
+export async function* streamAnalyzeImagesWithPrompt(
+  folderPath: string,
+  prompt: string,
+): AsyncGenerator<ImageAnalysisResponse, void, unknown> {
+  const payload = { folder_path: folderPath, prompt };
+  console.log("Sending request payload:", payload);
+
+  const response = await window.api.fetchFromPython<AsyncIterableResponse>(
+    "/folder/images/prompt",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  // The response is now an AsyncIterable
+  if (Symbol.asyncIterator in response) {
+    for await (const data of response) {
+      yield data as ImageAnalysisResponse;
+    }
+  } else {
+    throw new Error("Expected streaming response");
+  }
+}
+
 // Keep the old function for backwards compatibility
 export async function analyzeImages(
   folderPath: string,

@@ -1,12 +1,14 @@
 import StatusIndicator from "../components/StatusIndicator";
 import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import FolderDialog from "../components/FolderDialog";
 import {
   streamAnalyzeImages,
+  streamAnalyzeImagesWithPrompt,
   ImageAnalysisComplete,
   ImageAnalysisProgress,
 } from "../lib/api/images";
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import { toast } from "sonner";
 import { Progress } from "../components/ui/progress";
 
@@ -16,8 +18,11 @@ export default function Home() {
   const [results, setResults] = useState<
     ImageAnalysisComplete["top_images"] | null
   >(null);
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState("");
 
   const handleFolderSelect = async (folderPath: string) => {
+    setSelectedFolder(folderPath);
     setIsProcessing(true);
     setProgress(null);
     setResults(null);
@@ -25,6 +30,42 @@ export default function Home() {
     try {
       const encodedFolderPath = encodeURIComponent(folderPath);
       for await (const update of streamAnalyzeImages(encodedFolderPath)) {
+        if (update.type === "progress") {
+          setProgress(update);
+        } else if (update.type === "complete") {
+          setResults(update.top_images);
+          toast.success("Images analyzed successfully");
+        }
+      }
+    } catch (error) {
+      toast.error("Failed to analyze images");
+      console.error("Error analyzing images:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePromptSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedFolder) {
+      toast.error("Please select a folder first");
+      return;
+    }
+    if (!prompt.trim()) {
+      toast.error("Please enter a prompt");
+      return;
+    }
+
+    setIsProcessing(true);
+    setProgress(null);
+    setResults(null);
+
+    try {
+      const encodedFolderPath = encodeURIComponent(selectedFolder);
+      for await (const update of streamAnalyzeImagesWithPrompt(
+        encodedFolderPath,
+        prompt,
+      )) {
         if (update.type === "progress") {
           setProgress(update);
         } else if (update.type === "complete") {
@@ -64,6 +105,27 @@ export default function Home() {
               Learn More
             </Button>
           </div>
+
+          {/* Prompt Form */}
+          <form
+            onSubmit={handlePromptSubmit}
+            className="max-w-md mx-auto space-y-4"
+          >
+            <Input
+              type="text"
+              placeholder="Enter a prompt to find similar images..."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              disabled={isProcessing || !selectedFolder}
+            />
+            <Button
+              type="submit"
+              disabled={isProcessing || !selectedFolder || !prompt.trim()}
+              className="w-full"
+            >
+              {isProcessing ? "Processing..." : "Find Similar Images"}
+            </Button>
+          </form>
 
           {/* Progress Section */}
           {progress && (

@@ -16,6 +16,10 @@ from typing import AsyncGenerator
 class Folder(BaseModel):
     folder_path: str
 
+class PromptImageRanking(BaseModel):
+    folder_path: str
+    prompt: str
+
 
 app = FastAPI()
 
@@ -153,6 +157,90 @@ async def folder_images_endpoint(folder: Folder):
             top_images.append({"filename": img, "score": score, "base64_image": base64_image})
     
     return {"top_images": top_images}
+
+
+async def process_images_generator_prompt(folder_path: str, prompt: str) -> AsyncGenerator[str, None]:
+    images = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png','.jpg','.jpeg'))]
+    total_images = len(images)
+    
+    # === 1) Compute text embedding for the prompt ===
+    text_inputs = processor(text=prompt, return_tensors="pt", padding=True, truncation=True)
+    with torch.no_grad():
+        text_features = model.get_text_features(**text_inputs)
+        # Normalize text embeddings
+        text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
+    
+    # We'll store tuples: (image_filename, similarity_score)
+    scored = []
+    
+    # === 2) Loop over images to compute similarity ===
+    for idx, img in enumerate(images, 1):
+        path = os.path.join(folder_path, img)
+        
+        # Load image and compute image features
+        image = Image.open(path).convert("RGB")
+        image_inputs = processor(images=image, return_tensors="pt")
+        
+        with torch.no_grad():
+            image_features = model.get_image_features(**image_inputs)
+            # Normalize image embeddings
+            image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
+            
+            # Compute similarity (dot product)
+            similarity = (image_features * text_features).sum().item()
+        
+        scored.append((img, similarity))
+        
+        # === 3) Yield progress event for SSE ===
+        progress = {
+            "type": "progress",
+            "current": idx,
+            "total": total_images,
+            "percentage": (idx / total_images) * 100,
+            "currentImage": img
+        }
+        yield f"data: {json.dumps(progress)}\n\n"
+        
+        # Optional: small sleep to avoid flooding the frontend
+        await asyncio.sleep(0.05)
+    
+    # === 4) After finishing all images, sort and get top 5 ===
+    scored.sort(key=lambda x: x[1], reverse=True)
+    top_5 = scored[:5]
+
+    # Convert top 5 images to base64
+    top_images = []
+    for img, score in top_5:
+        with open(os.path.join(folder_path, img), "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            top_images.append({"filename": img, "score": score, "base64_image": base64_image})
+    
+    # === 5) Yield final “complete” event with top 5 images ===
+    final_result = {
+        "type": "complete",
+        "top_images": top_images
+    }
+    yield f"data: {json.dumps(final_result)}\n\n"
+
+
+@app.post("/folder/images/prompt")
+async def folder_images_prompt_stream_endpoint(data: PromptImageRanking):
+    folder_path = unquote(data.folder_path)
+    prompt = data.prompt
+    
+    if not os.path.exists(folder_path):
+        return {"error": "Folder does not exist"}
+        
+    # Return the SSE streaming response
+    return StreamingResponse(
+        process_images_generator_prompt(folder_path, prompt),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
 
 if __name__ == "__main__":
     import uvicorn

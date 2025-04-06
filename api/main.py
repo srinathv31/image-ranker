@@ -9,6 +9,9 @@ from urllib.parse import unquote
 from PIL import Image
 import torch
 from transformers import CLIPProcessor, CLIPModel
+from fastapi.responses import StreamingResponse
+import asyncio
+from typing import AsyncGenerator
 
 class Folder(BaseModel):
     folder_path: str
@@ -72,13 +75,68 @@ def get_aesthetic_score(image_path: str) -> float:
         score = float(outputs[0].sum().item()) 
     return score
 
-@app.post("/folder/images")
-def folder_images_endpoint(folder: Folder):
-    # decode the folder path
+async def process_images_generator(folder_path: str) -> AsyncGenerator[str, None]:
+    images = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png','.jpg','.jpeg'))]
+    total_images = len(images)
+    scored = []
+    
+    for idx, img in enumerate(images, 1):
+        path = os.path.join(folder_path, img)
+        score = get_aesthetic_score(path)
+        scored.append((img, score))
+        
+        # Send progress update
+        progress = {
+            "type": "progress",
+            "current": idx,
+            "total": total_images,
+            "percentage": (idx / total_images) * 100,
+            "currentImage": img
+        }
+        yield f"data: {json.dumps(progress)}\n\n"
+        await asyncio.sleep(0.1)  # Small delay to prevent overwhelming the client
+    
+    # Sort and get top 5
+    scored.sort(key=lambda x: x[1], reverse=True)
+    top_5 = scored[:5]
+    
+    # Create final result with base64 images
+    top_images = []
+    for img, score in top_5:
+        with open(os.path.join(folder_path, img), "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            top_images.append({"filename": img, "score": score, "base64_image": base64_image})
+    
+    # Send final result
+    final_result = {
+        "type": "complete",
+        "top_images": top_images
+    }
+    yield f"data: {json.dumps(final_result)}\n\n"
+
+@app.post("/folder/images/stream")
+async def folder_images_stream_endpoint(folder: Folder):
     folder_path = unquote(folder.folder_path)
+    
+    if not os.path.exists(folder_path):
+        return {"error": "Folder does not exist"}
+        
+    return StreamingResponse(
+        process_images_generator(folder_path),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
-    print(f"Folder received: {folder_path}")
-
+@app.post("/folder/images")
+async def folder_images_endpoint(folder: Folder):
+    folder_path = unquote(folder.folder_path)
+    
+    if not os.path.exists(folder_path):
+        return {"error": "Folder does not exist"}
+    
     images = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png','.jpg','.jpeg'))]
     scored = []
     for img in images:
@@ -87,16 +145,14 @@ def folder_images_endpoint(folder: Folder):
         scored.append((img, score))
     scored.sort(key=lambda x: x[1], reverse=True)
     top_5 = scored[:5]
-
-    # create a base64 encoded image for each top image
+    
     top_images = []
     for img, score in top_5:
         with open(os.path.join(folder_path, img), "rb") as image_file:
             base64_image = base64.b64encode(image_file.read()).decode('utf-8')
             top_images.append({"filename": img, "score": score, "base64_image": base64_image})
-
+    
     return {"top_images": top_images}
-
 
 if __name__ == "__main__":
     import uvicorn

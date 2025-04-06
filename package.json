@@ -57,6 +57,7 @@
     "typescript": "~4.5.4"
   },
   "dependencies": {
+    "@radix-ui/react-progress": "^1.1.2",
     "@radix-ui/react-slot": "^1.1.2",
     "@tanstack/react-query": "^5.71.10",
     "class-variance-authority": "^0.7.1",

@@ -1,27 +1,43 @@
 import StatusIndicator from "../components/StatusIndicator";
 import { Button } from "../components/ui/button";
 import FolderDialog from "../components/FolderDialog";
-import { analyzeImages } from "../lib/api/images";
-import { useMutation } from "@tanstack/react-query";
+import {
+  streamAnalyzeImages,
+  ImageAnalysisComplete,
+  ImageAnalysisProgress,
+} from "../lib/api/images";
+import { useState } from "react";
 import { toast } from "sonner";
+import { Progress } from "../components/ui/progress";
 
 export default function Home() {
-  const folderMutation = useMutation({
-    mutationFn: analyzeImages,
-    onSuccess: (data) => {
-      toast.success("Images analyzed successfully");
-      console.log("Images analyzed:", data);
-    },
-    onError: (error) => {
-      toast.error("Failed to analyze images");
-      console.error("Error analyzing images:", error);
-    },
-  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState<ImageAnalysisProgress | null>(null);
+  const [results, setResults] = useState<
+    ImageAnalysisComplete["top_images"] | null
+  >(null);
 
   const handleFolderSelect = async (folderPath: string) => {
-    // make the path url encoded
-    const encodedFolderPath = encodeURIComponent(folderPath);
-    folderMutation.mutate(encodedFolderPath);
+    setIsProcessing(true);
+    setProgress(null);
+    setResults(null);
+
+    try {
+      const encodedFolderPath = encodeURIComponent(folderPath);
+      for await (const update of streamAnalyzeImages(encodedFolderPath)) {
+        if (update.type === "progress") {
+          setProgress(update);
+        } else if (update.type === "complete") {
+          setResults(update.top_images);
+          toast.success("Images analyzed successfully");
+        }
+      }
+    } catch (error) {
+      toast.error("Failed to analyze images");
+      console.error("Error analyzing images:", error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -42,20 +58,36 @@ export default function Home() {
           <div className="flex gap-4 justify-center">
             <FolderDialog
               onFolderSelect={handleFolderSelect}
-              isLoading={folderMutation.isPending}
+              isLoading={isProcessing}
             />
             <Button size="lg" variant="outline">
               Learn More
             </Button>
           </div>
-          {folderMutation.data && (
+
+          {/* Progress Section */}
+          {progress && (
+            <div className="mt-4 space-y-4">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Processing: {progress.currentImage}</span>
+                <span>{Math.round(progress.percentage)}%</span>
+              </div>
+              <Progress value={progress.percentage} className="w-full" />
+              <p className="text-sm text-muted-foreground">
+                Processed {progress.current} of {progress.total} images
+              </p>
+            </div>
+          )}
+
+          {/* Results Section */}
+          {results && (
             <div className="mt-4 p-6 bg-white shadow-md rounded-lg">
               <h2 className="text-3xl font-bold mb-4 text-gray-800">
                 Top Images
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {folderMutation.data.top_images
-                  .sort((a, b) => b.score - a.score) // Sort by score descending
+                {results
+                  .sort((a, b) => b.score - a.score)
                   .map((image, index) => (
                     <div
                       key={image.filename}
@@ -66,12 +98,7 @@ export default function Home() {
                         alt={image.filename}
                         className="w-full h-32 object-cover rounded-md mb-2"
                       />
-                      {/* <h3 className="text-lg text-wrap font-semibold text-gray-700">
-                        {image.filename}
-                      </h3> */}
-                      <p className="text-sm text-gray-500">
-                        Rank: {index + 1} {/* Display rank */}
-                      </p>
+                      <p className="text-sm text-gray-500">Rank: {index + 1}</p>
                       <p className="text-sm text-gray-500">
                         Score: {image.score.toFixed(2)}
                       </p>

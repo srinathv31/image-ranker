@@ -90,3 +90,9 @@ typings/
 
 # Electron-Forge
 out/
+
+# Build
+dist/
+dist-test/
+api/build/
+api.spec

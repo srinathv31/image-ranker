@@ -1,8 +1,8 @@
 fastapi==0.109.2
 uvicorn==0.27.1
 python-multipart==0.0.9
-Pillow  # Let pip choose the compatible version
-numpy  # Let pip choose the compatible version 
-transformers
-torch==2.2.0
-torchvision==0.17.0
+Pillow>=11.1.0
+numpy>=2.2.4
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==2.6.0
+transformers==4.37.2 

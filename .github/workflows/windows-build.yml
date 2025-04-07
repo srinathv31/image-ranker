@@ -50,5 +50,4 @@ jobs:
           name: windows-build
           path: |
             out/make/squirrel.windows/x64/*.exe
-            out/make/zip/win32/x64/*.zip
           if-no-files-found: error

@@ -12,7 +12,9 @@
     "lint": "eslint --ext .ts,.tsx .",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
-    "start:api": "cd api && source venv/bin/activate && uvicorn main:app --reload",
+    "start:api:win": "cd api && .\\venv\\Scripts\\Activate.ps1 && uvicorn main:app --reload",
+    "start:api:mac": "cd api && source venv/bin/activate && uvicorn main:app --reload",
+    "start:api": "node -e \"process.platform === 'win32' ? process.exit(0) : process.exit(1)\" && npm run start:api:win || npm run start:api:mac",
     "start:electron": "electron-forge start",
     "dev": "concurrently \"npm run start:api\" \"npm run start:electron\""
   },

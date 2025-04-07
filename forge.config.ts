@@ -14,7 +14,7 @@ import { rendererConfig } from "./webpack.renderer.config";
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    extraResource: ["./dist/api"],
+    extraResource: [`./dist/api${process.platform === "win32" ? ".exe" : ""}`],
     icon: "./src/assets/icon",
   },
   rebuildConfig: {},

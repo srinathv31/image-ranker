@@ -8,6 +8,12 @@ import { contextBridge, ipcRenderer } from "electron";
 contextBridge.exposeInMainWorld("electron", {
   showOpenDialog: (options: Electron.OpenDialogOptions) =>
     ipcRenderer.invoke("dialog:openDirectory", options),
+  onApiReady: (callback: () => void) => {
+    ipcRenderer.on("api:ready", callback);
+    return () => {
+      ipcRenderer.removeListener("api:ready", callback);
+    };
+  },
 });
 
 // Expose API methods

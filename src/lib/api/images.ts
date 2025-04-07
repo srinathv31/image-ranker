@@ -95,9 +95,9 @@ export async function analyzeImages(
   const payload = { folder_path: folderPath };
   console.log("Sending request payload:", payload);
 
-  const response = await window.api.fetchFromPython<{
-    top_images: ImageAnalysisComplete["top_images"];
-  }>("/folder/images", {
+  const response = await window.api.fetchFromPython<
+    AsyncIterableResponse | { top_images: ImageAnalysisComplete["top_images"] }
+  >("/folder/images", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -109,5 +109,10 @@ export async function analyzeImages(
     throw new Error("Unexpected streaming response");
   }
 
-  return response.top_images;
+  // Making this explicit to avoid type errors
+  const topImages = (
+    response as { top_images: ImageAnalysisComplete["top_images"] }
+  ).top_images;
+
+  return topImages;
 }

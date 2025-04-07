@@ -96,3 +96,6 @@ dist/
 dist-test/
 api/build/
 api.spec
+
+# Build python
+build_venv/

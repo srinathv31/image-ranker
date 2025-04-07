@@ -10,6 +10,7 @@ declare global {
       showOpenDialog: (
         options: Electron.OpenDialogOptions,
       ) => Promise<Electron.OpenDialogReturnValue>;
+      onApiReady: (callback: () => void) => () => void;
     };
     api: {
       fetchFromPython: <T = unknown>(

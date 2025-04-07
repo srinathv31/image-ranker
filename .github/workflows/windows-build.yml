@@ -44,10 +44,15 @@ jobs:
         run: |
           npm run make
 
+      - name: Create ZIP Archive
+        run: |
+          cd out
+          powershell -Command "Compress-Archive -Path 'image-ranker-win32-x64' -DestinationPath 'image-ranker-win32-x64.zip'"
+          cd ..
+
       - name: Upload Windows Executable
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: |
-            out/make/squirrel.windows/x64/*.exe
+          path: out/image-ranker-win32-x64.zip
           if-no-files-found: error

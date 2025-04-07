@@ -47,7 +47,7 @@ jobs:
       - name: Create ZIP Archive
         run: |
           cd out
-          powershell -Command "Compress-Archive -Path 'make/zip/win32/x64' -DestinationPath 'image-ranker-win32-x64.zip'"
+          powershell -Command "Compress-Archive -Path 'make/squirrel.windows/x64' -DestinationPath 'image-ranker-win32-x64.zip'"
           cd ..
 
       - name: Upload Windows Executable

@@ -1,5 +1,5 @@
-import random
 import os
+import signal
 import json
 import base64
 from fastapi import FastAPI
@@ -50,6 +50,12 @@ async def index():
 @app.get("/healthcheck")
 async def health_check():
     return {"status": "ok"}
+
+
+@app.post("/shutdown")
+async def shutdown():
+    os.kill(os.getpid(), signal.SIGTERM)
+    return {"message": "Shutting down"}
 
 
 # Load model at startup - make it global for multiprocessing

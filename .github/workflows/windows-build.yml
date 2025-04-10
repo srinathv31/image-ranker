@@ -26,8 +26,7 @@ jobs:
         run: |
           cd api
           pyinstaller --onefile --name api main.py
-          mkdir -p ../dist/api
-          copy dist\api.exe ..\dist\api\
+          copy dist\api.exe ..\dist\api.exe
           cd ..
 
       - name: Setup Node.js

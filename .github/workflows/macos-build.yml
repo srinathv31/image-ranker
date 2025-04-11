@@ -1,11 +1,11 @@
-name: Windows Build
+name: macOS Build
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -28,9 +28,11 @@ jobs:
           pyinstaller --onefile --name api main.py
           cd ..
           # Create dist directory if it doesn't exist
-          mkdir -Force dist
-          # On Windows, copy with .exe extension
-          copy api\dist\api.exe dist\api.exe
+          mkdir -p dist
+          # On macOS, copy without .exe extension
+          cp api/dist/api dist/api
+          # Make the file executable
+          chmod +x dist/api
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -42,19 +44,19 @@ jobs:
         run: |
           npm install
 
-      - name: Build Windows App
+      - name: Build macOS App
         run: |
           npm run make
 
       - name: Create ZIP Archive
         run: |
           cd out
-          powershell -Command "Compress-Archive -Path 'make/squirrel.windows/x64' -DestinationPath 'image-ranker-win32-x64.zip'"
+          zip -r image-ranker-darwin-x64.zip make/zip/darwin/x64/image-ranker-darwin-x64
           cd ..
 
-      - name: Upload Windows Executable
+      - name: Upload macOS Build
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build
-          path: out/image-ranker-win32-x64.zip
+          name: macos-build
+          path: out/image-ranker-darwin-x64.zip
           if-no-files-found: error

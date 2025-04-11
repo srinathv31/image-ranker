@@ -11,10 +11,14 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { mainConfig } from "./webpack.main.config";
 import { rendererConfig } from "./webpack.renderer.config";
 
+// Handle platform-specific executable paths
+const apiExecutable =
+  process.platform === "win32" ? "./dist/api.exe" : "./dist/api";
+
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    extraResource: ["./dist/api"],
+    extraResource: [apiExecutable],
     icon: "./src/assets/icon",
   },
   rebuildConfig: {},

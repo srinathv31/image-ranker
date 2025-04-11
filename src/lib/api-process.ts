@@ -63,7 +63,9 @@ export function startApiProcess(): Promise<void> {
     startNewApiProcess();
 
     function startNewApiProcess() {
-      const apiPath = path.join(process.resourcesPath, "api");
+      // Handle Windows executable extension
+      const apiExeName = process.platform === "win32" ? "api.exe" : "api";
+      const apiPath = path.join(process.resourcesPath, apiExeName);
       log.info("Starting API process from:", apiPath);
 
       apiProcess = spawn(apiPath, [], {

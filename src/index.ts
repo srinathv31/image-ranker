@@ -142,16 +142,16 @@ ipcMain.handle(
       const downloadFolder = path.join(downloadsPath, "image-ranker-downloads");
 
       // Create downloads folder if it doesn't exist
-      if (!fs.existsSync(downloadFolder)) {
-        fs.mkdirSync(downloadFolder, { recursive: true });
-      }
+      await fs.promises.mkdir(downloadFolder, { recursive: true });
 
-      // Download each image
-      for (const image of images) {
-        const buffer = Buffer.from(image.base64_image, "base64");
-        const filePath = path.join(downloadFolder, image.filename);
-        fs.writeFileSync(filePath, buffer);
-      }
+      // Download all images in parallel
+      await Promise.all(
+        images.map(async (image) => {
+          const buffer = Buffer.from(image.base64_image, "base64");
+          const filePath = path.join(downloadFolder, image.filename);
+          await fs.promises.writeFile(filePath, buffer);
+        }),
+      );
 
       return { success: true, downloadFolder };
     } catch (error) {

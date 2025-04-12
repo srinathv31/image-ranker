@@ -291,35 +291,49 @@ export default function Home() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {results
                   .sort((a, b) => b.score - a.score)
-                  .map((image, index) => (
-                    <div
-                      key={image.filename}
-                      className="group relative bg-muted rounded-lg overflow-hidden transition-all duration-300 hover:scale-[1.02]"
-                    >
-                      <div className="absolute top-2 right-2 z-10">
-                        <Checkbox
-                          checked={selectedImages.has(image.filename)}
-                          onCheckedChange={() =>
-                            toggleImageSelection(image.filename)
-                          }
-                          className="bg-white/90 border-white/90"
+                  .map((image, index) => {
+                    const isSelected = selectedImages.has(image.filename);
+                    return (
+                      <div
+                        key={image.filename}
+                        onClick={() => toggleImageSelection(image.filename)}
+                        className={`group relative bg-muted rounded-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
+                          isSelected ? "ring-2 ring-primary ring-offset-2" : ""
+                        }`}
+                      >
+                        <div
+                          className="absolute top-2 right-2 z-10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() =>
+                              toggleImageSelection(image.filename)
+                            }
+                            className="bg-white/90 border-white/90"
+                          />
+                        </div>
+                        <div
+                          className={`absolute inset-0 bg-black/10 transition-opacity duration-200 ${
+                            isSelected ? "opacity-100" : "opacity-0"
+                          }`}
                         />
+                        <img
+                          src={`data:image/jpeg;base64,${image.base64_image}`}
+                          alt={image.filename}
+                          className="w-full aspect-square object-cover"
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                          <p className="text-white font-medium">
+                            Rank: {index + 1}
+                          </p>
+                          <p className="text-white/80 text-sm">
+                            Score: {image.score.toFixed(2)}
+                          </p>
+                        </div>
                       </div>
-                      <img
-                        src={`data:image/jpeg;base64,${image.base64_image}`}
-                        alt={image.filename}
-                        className="w-full aspect-square object-cover"
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                        <p className="text-white font-medium">
-                          Rank: {index + 1}
-                        </p>
-                        <p className="text-white/80 text-sm">
-                          Score: {image.score.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
           )}

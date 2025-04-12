@@ -2,6 +2,7 @@ import StatusIndicator from "../components/StatusIndicator";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import FolderDialog from "../components/FolderDialog";
+import { Dialog, DialogContent, DialogClose } from "../components/ui/dialog";
 import {
   streamAnalyzeImages,
   streamAnalyzeImagesWithPrompt,
@@ -13,7 +14,7 @@ import { downloadImages } from "../lib/api/downloads";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Progress } from "../components/ui/progress";
-import { Sparkles, Search, Settings2, Download } from "lucide-react";
+import { Sparkles, Search, Settings2, Download, Expand } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,10 @@ export default function Home() {
   const [processingMode, setProcessingMode] = useState<ProcessingMode>("batch");
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState(false);
+  const [expandedImage, setExpandedImage] = useState<{
+    base64: string;
+    filename: string;
+  } | null>(null);
 
   const handleFolderSelect = (folderPath: string) => {
     setSelectedFolder(folderPath || null);
@@ -296,15 +301,27 @@ export default function Home() {
                     return (
                       <div
                         key={image.filename}
-                        onClick={() => toggleImageSelection(image.filename)}
                         className={`group relative bg-muted rounded-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
                           isSelected ? "ring-2 ring-primary ring-offset-2" : ""
                         }`}
                       >
                         <div
-                          className="absolute top-2 right-2 z-10"
+                          className="absolute top-2 right-2 z-10 flex gap-2"
                           onClick={(e) => e.stopPropagation()}
                         >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="bg-white/90 hover:bg-white"
+                            onClick={() =>
+                              setExpandedImage({
+                                base64: image.base64_image,
+                                filename: image.filename,
+                              })
+                            }
+                          >
+                            <Expand className="h-4 w-4" />
+                          </Button>
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() =>
@@ -314,6 +331,7 @@ export default function Home() {
                           />
                         </div>
                         <div
+                          onClick={() => toggleImageSelection(image.filename)}
                           className={`absolute inset-0 bg-black/10 transition-opacity duration-200 ${
                             isSelected ? "opacity-100" : "opacity-0"
                           }`}
@@ -337,6 +355,27 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* Image Expand Dialog */}
+          <Dialog
+            open={expandedImage !== null}
+            onOpenChange={() => setExpandedImage(null)}
+          >
+            <DialogContent className="max-w-[95vw] max-h-[95vh] w-fit h-fit p-0 overflow-hidden flex items-center justify-center border-none">
+              {expandedImage && (
+                <div className="relative w-full h-full flex items-center justify-center bg-black/95">
+                  <DialogClose />
+                  <div className="relative max-w-full max-h-[85vh] flex flex-col">
+                    <img
+                      src={`data:image/jpeg;base64,${expandedImage.base64}`}
+                      alt={expandedImage.filename}
+                      className="object-contain max-h-[85vh] w-auto"
+                    />
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
 

@@ -148,7 +148,8 @@ ipcMain.handle(
       await Promise.all(
         images.map(async (image) => {
           const buffer = Buffer.from(image.base64_image, "base64");
-          const filePath = path.join(downloadFolder, image.filename);
+          const sanitizedFilename = path.basename(image.filename);
+          const filePath = path.join(downloadFolder, sanitizedFilename);
           await fs.promises.writeFile(filePath, buffer);
         }),
       );

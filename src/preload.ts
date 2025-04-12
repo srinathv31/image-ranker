@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld("electron", {
       ipcRenderer.removeListener("api:ready", callback);
     };
   },
+  downloadImages: (images: { base64_image: string; filename: string }[]) =>
+    ipcRenderer.invoke("download:images", images),
 });
 
 // Expose API methods

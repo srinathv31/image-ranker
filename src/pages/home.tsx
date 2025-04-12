@@ -9,10 +9,11 @@ import {
   ImageAnalysisProgress,
   ProcessingMode,
 } from "../lib/api/images";
+import { downloadImages } from "../lib/api/downloads";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Progress } from "../components/ui/progress";
-import { Sparkles, Search, Settings2 } from "lucide-react";
+import { Sparkles, Search, Settings2, Download } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -20,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { Checkbox } from "../components/ui/checkbox";
 
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -30,6 +32,8 @@ export default function Home() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [processingMode, setProcessingMode] = useState<ProcessingMode>("batch");
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleFolderSelect = (folderPath: string) => {
     setSelectedFolder(folderPath || null);
@@ -84,6 +88,54 @@ export default function Home() {
       console.error("Error analyzing images:", error);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (!results) return;
+
+    if (selectedImages.size === results.length) {
+      setSelectedImages(new Set());
+    } else {
+      setSelectedImages(new Set(results.map((img) => img.filename)));
+    }
+  };
+
+  const toggleImageSelection = (filename: string) => {
+    const newSelected = new Set(selectedImages);
+    if (newSelected.has(filename)) {
+      newSelected.delete(filename);
+    } else {
+      newSelected.add(filename);
+    }
+    setSelectedImages(newSelected);
+  };
+
+  const handleDownload = async () => {
+    if (!results || selectedImages.size === 0) return;
+
+    const selectedImageData = results.filter((img) =>
+      selectedImages.has(img.filename),
+    );
+    setIsDownloading(true);
+
+    const downloadPromise = downloadImages(selectedImageData);
+
+    toast.promise(downloadPromise, {
+      loading: "Downloading selected images...",
+      success: (data) => {
+        if (data.success) {
+          return `Images downloaded to ${data.downloadFolder}`;
+        }
+        throw new Error(data.error || "Failed to download images");
+      },
+      error: "Failed to download images",
+    });
+
+    try {
+      await downloadPromise;
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -206,30 +258,82 @@ export default function Home() {
           {/* Results Section */}
           {results && (
             <div className="bg-card border rounded-lg p-6">
-              <h2 className="text-2xl font-semibold mb-6">Results</h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-semibold">Results</h2>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="select-all"
+                      checked={
+                        results.length > 0 &&
+                        selectedImages.size === results.length
+                      }
+                      onCheckedChange={toggleSelectAll}
+                    />
+                    <label htmlFor="select-all" className="text-sm">
+                      Select All
+                    </label>
+                  </div>
+                  {selectedImages.size > 0 && (
+                    <Button
+                      onClick={handleDownload}
+                      disabled={isDownloading}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      {isDownloading
+                        ? "Downloading..."
+                        : `Download (${selectedImages.size})`}
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {results
                   .sort((a, b) => b.score - a.score)
-                  .map((image, index) => (
-                    <div
-                      key={image.filename}
-                      className="group relative bg-muted rounded-lg overflow-hidden transition-all duration-300 hover:scale-[1.02]"
-                    >
-                      <img
-                        src={`data:image/jpeg;base64,${image.base64_image}`}
-                        alt={image.filename}
-                        className="w-full aspect-square object-cover"
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                        <p className="text-white font-medium">
-                          Rank: {index + 1}
-                        </p>
-                        <p className="text-white/80 text-sm">
-                          Score: {image.score.toFixed(2)}
-                        </p>
+                  .map((image, index) => {
+                    const isSelected = selectedImages.has(image.filename);
+                    return (
+                      <div
+                        key={image.filename}
+                        onClick={() => toggleImageSelection(image.filename)}
+                        className={`group relative bg-muted rounded-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
+                          isSelected ? "ring-2 ring-primary ring-offset-2" : ""
+                        }`}
+                      >
+                        <div
+                          className="absolute top-2 right-2 z-10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() =>
+                              toggleImageSelection(image.filename)
+                            }
+                            className="bg-white/90 border-white/90"
+                          />
+                        </div>
+                        <div
+                          className={`absolute inset-0 bg-black/10 transition-opacity duration-200 ${
+                            isSelected ? "opacity-100" : "opacity-0"
+                          }`}
+                        />
+                        <img
+                          src={`data:image/jpeg;base64,${image.base64_image}`}
+                          alt={image.filename}
+                          className="w-full aspect-square object-cover"
+                        />
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                          <p className="text-white font-medium">
+                            Rank: {index + 1}
+                          </p>
+                          <p className="text-white/80 text-sm">
+                            Score: {image.score.toFixed(2)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
           )}

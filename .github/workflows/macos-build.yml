@@ -72,7 +72,7 @@ jobs:
       - name: Create ZIP Archive
         run: |
           cd out
-          zip -r image-ranker-darwin-arm64-v${{ steps.version.outputs.version }}.zip make/zip/darwin/arm64/image-ranker-darwin-arm64
+          zip -r image-ranker-darwin-arm64-v${{ steps.version.outputs.version }}.zip image-ranker-darwin-arm64
           cd ..
 
       - name: Upload macOS Build

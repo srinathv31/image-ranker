@@ -7,7 +7,7 @@ jobs:
   build:
     # Only run if triggered from a release branch
     if: startsWith(github.ref, 'refs/heads/release/')
-    runs-on: macos-latest
+    runs-on: macos-latest # Uses the mac silicon macos runner
 
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +29,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          architecture: "arm64"
 
       - name: Install Python dependencies
         run: |
@@ -43,9 +44,7 @@ jobs:
           cd ..
           # Create dist directory if it doesn't exist
           mkdir -p dist
-          # On macOS, copy without .exe extension
           cp api/dist/api dist/api
-          # Make the file executable
           chmod +x dist/api
 
       - name: Setup Node.js
@@ -53,24 +52,32 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+          architecture: "arm64"
 
       - name: Install dependencies
         run: |
           npm install
 
       - name: Build macOS App
+        env:
+          npm_config_arch: arm64
         run: |
-          npm run make
+          npm run make -- --arch=arm64
+
+      - name: Debug Directory Structure
+        run: |
+          echo "Contents of out directory:"
+          ls -R out/
 
       - name: Create ZIP Archive
         run: |
           cd out
-          zip -r image-ranker-darwin-x64-v${{ steps.version.outputs.version }}.zip make/zip/darwin/x64/image-ranker-darwin-x64
+          zip -r image-ranker-darwin-arm64-v${{ steps.version.outputs.version }}.zip make/zip/darwin/arm64/image-ranker-darwin-arm64
           cd ..
 
       - name: Upload macOS Build
         uses: actions/upload-artifact@v4
         with:
-          name: image-ranker-macos-v${{ steps.version.outputs.version }}
-          path: out/image-ranker-darwin-x64-v${{ steps.version.outputs.version }}.zip
+          name: image-ranker-macos-arm64-v${{ steps.version.outputs.version }}
+          path: out/image-ranker-darwin-arm64-v${{ steps.version.outputs.version }}.zip
           if-no-files-found: error

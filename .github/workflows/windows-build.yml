@@ -2,11 +2,6 @@ name: Windows Build
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version number (e.g. 1.0.0)"
-        required: true
-        type: string
 
 jobs:
   build:
@@ -16,6 +11,25 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Extract version from branch name
+        id: version
+        shell: bash
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          VERSION=${BRANCH_NAME#release/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # Validate semver format
+          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Branch name must follow semver format (e.g., release/1.0.0)"
+            exit 1
+          fi
+
+      - name: Create Git tag
+        shell: bash
+        run: |
+          git tag -a v${{ steps.version.outputs.version }} -m "Release v${{ steps.version.outputs.version }}"
+          git push origin v${{ steps.version.outputs.version }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -56,12 +70,12 @@ jobs:
       - name: Create ZIP Archive
         run: |
           cd out
-          powershell -Command "Compress-Archive -Path 'make/squirrel.windows/x64' -DestinationPath 'image-ranker-win32-x64-v${{ github.event.inputs.version }}.zip'"
+          powershell -Command "Compress-Archive -Path 'make/squirrel.windows/x64' -DestinationPath 'image-ranker-win32-x64-v${{ steps.version.outputs.version }}.zip'"
           cd ..
 
       - name: Upload Windows Executable
         uses: actions/upload-artifact@v4
         with:
-          name: image-ranker-windows-v${{ github.event.inputs.version }}
-          path: out/image-ranker-win32-x64-v${{ github.event.inputs.version }}.zip
+          name: image-ranker-windows-v${{ steps.version.outputs.version }}
+          path: out/image-ranker-win32-x64-v${{ steps.version.outputs.version }}.zip
           if-no-files-found: error

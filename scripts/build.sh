@@ -28,7 +28,7 @@ rm -rf build_venv
 
 # Install production dependencies
 echo "📦 Installing production dependencies..."
-# npm ci --production
+npm install
 
 # Build Electron app
 echo "🏗️ Building Electron app..."

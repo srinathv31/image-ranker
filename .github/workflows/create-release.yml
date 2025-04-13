@@ -1,0 +1,64 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for all branches and tags
+
+      - name: Get version from package.json
+        id: package_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Validate version format
+          if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Version in package.json must follow semver format (e.g., 1.0.0)"
+            exit 1
+          fi
+
+      - name: Configure Git
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+      - name: Create and push release branch
+        run: |
+          # Ensure we're on develop
+          git checkout develop
+          git pull origin develop
+
+          # Create and push release branch
+          git checkout -b release/${{ steps.package_version.outputs.version }}
+          git push origin release/${{ steps.package_version.outputs.version }}
+
+      - name: Create and push tag
+        run: |
+          git tag -a v${{ steps.package_version.outputs.version }} -m "Release v${{ steps.package_version.outputs.version }}"
+          git push origin v${{ steps.package_version.outputs.version }}
+
+    #   - name: Trigger build workflows
+    #     run: |
+    #       # Trigger macOS build
+    #       gh workflow run macos-build.yml --ref release/${{ steps.package_version.outputs.version }}
+
+    #       # Trigger Windows build
+    #       gh workflow run windows-build.yml --ref release/${{ steps.package_version.outputs.version }}
+    #     env:
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    #   - name: Create GitHub Release
+    #     run: |
+    #       gh release create v${{ steps.package_version.outputs.version }} \
+    #         --title "Release v${{ steps.package_version.outputs.version }}" \
+    #         --notes "Release v${{ steps.package_version.outputs.version }}" \
+    #         --draft \
+    #         --target release/${{ steps.package_version.outputs.version }}
+    #     env:
+    #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

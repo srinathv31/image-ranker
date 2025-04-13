@@ -1,8 +1,5 @@
-import StatusIndicator from "../components/StatusIndicator";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import FolderDialog from "../components/FolderDialog";
-import { Dialog, DialogContent, DialogClose } from "../components/ui/dialog";
+import { useState } from "react";
+import { toast } from "sonner";
 import {
   streamAnalyzeImages,
   streamAnalyzeImagesWithPrompt,
@@ -11,18 +8,13 @@ import {
   ProcessingMode,
 } from "../lib/api/images";
 import { downloadImages } from "../lib/api/downloads";
-import { useState } from "react";
-import { toast } from "sonner";
-import { Progress } from "../components/ui/progress";
-import { Sparkles, Search, Settings2, Download, Expand } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import { Checkbox } from "../components/ui/checkbox";
+
+import Header from "../components/home/Header";
+import FolderSelection from "../components/home/FolderSelection";
+import AnalysisOptions from "../components/home/AnalysisOptions";
+import ProgressIndicator from "../components/home/ProgressIndicator";
+import ImageResults from "../components/home/ImageResults/ImageResults";
+import Footer from "../components/home/Footer";
 
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,23 +23,18 @@ export default function Home() {
     ImageAnalysisComplete["top_images"] | null
   >(null);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState("");
-  const [processingMode, setProcessingMode] = useState<ProcessingMode>("batch");
-  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [expandedImage, setExpandedImage] = useState<{
-    base64: string;
-    filename: string;
-  } | null>(null);
 
   const handleFolderSelect = (folderPath: string) => {
     setSelectedFolder(folderPath || null);
     setResults(null);
     setProgress(null);
-    setPrompt("");
   };
 
-  const analyzeImages = async (usePrompt = false) => {
+  const handleAnalyze = async (
+    usePrompt: boolean,
+    prompt: string,
+    processingMode: ProcessingMode,
+  ) => {
     if (!selectedFolder) {
       toast.error("Please select a folder first");
       return;
@@ -96,35 +83,10 @@ export default function Home() {
     }
   };
 
-  const toggleSelectAll = () => {
-    if (!results) return;
-
-    if (selectedImages.size === results.length) {
-      setSelectedImages(new Set());
-    } else {
-      setSelectedImages(new Set(results.map((img) => img.filename)));
-    }
-  };
-
-  const toggleImageSelection = (filename: string) => {
-    const newSelected = new Set(selectedImages);
-    if (newSelected.has(filename)) {
-      newSelected.delete(filename);
-    } else {
-      newSelected.add(filename);
-    }
-    setSelectedImages(newSelected);
-  };
-
-  const handleDownload = async () => {
-    if (!results || selectedImages.size === 0) return;
-
-    const selectedImageData = results.filter((img) =>
-      selectedImages.has(img.filename),
-    );
-    setIsDownloading(true);
-
-    const downloadPromise = downloadImages(selectedImageData);
+  const handleDownload = async (
+    selectedImages: ImageAnalysisComplete["top_images"],
+  ) => {
+    const downloadPromise = downloadImages(selectedImages);
 
     toast.promise(downloadPromise, {
       loading: "Downloading selected images...",
@@ -137,256 +99,34 @@ export default function Home() {
       error: "Failed to download images",
     });
 
-    try {
-      await downloadPromise;
-    } finally {
-      setIsDownloading(false);
-    }
+    return downloadPromise;
   };
 
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-grow container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto text-center space-y-8">
-          <h1 className="text-6xl font-bold tracking-tight">
-            Image{" "}
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Ranker
-            </span>
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Organize and rank your images with ease. A powerful desktop
-            application for managing and rating your image collections.
-          </p>
+          <Header />
 
-          {/* Step 1: Folder Selection */}
-          <div className="mt-12">
-            <div className="bg-card border rounded-lg p-6">
-              <h2 className="text-2xl font-semibold mb-6">
-                Step 1: Select Folder
-              </h2>
-              <FolderDialog
-                onFolderSelect={handleFolderSelect}
-                selectedFolder={selectedFolder}
-                isLoading={isProcessing}
-              />
-            </div>
-          </div>
+          <FolderSelection
+            selectedFolder={selectedFolder}
+            onFolderSelect={handleFolderSelect}
+            isProcessing={isProcessing}
+          />
 
-          {/* Step 2: Analysis Options */}
-          {selectedFolder && (
-            <div className="bg-card border rounded-lg p-6">
-              <h2 className="text-2xl font-semibold mb-6">
-                Step 2: Choose Analysis Method
-              </h2>
-              <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                {/* Most Aesthetic Option */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Most Aesthetic</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Find the most visually appealing images in your collection
-                  </p>
-                  <Button
-                    onClick={() => analyzeImages(false)}
-                    disabled={isProcessing}
-                    className="w-full"
-                  >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    {isProcessing ? "Processing..." : "Find Best Images"}
-                  </Button>
-                </div>
+          <AnalysisOptions
+            onAnalyze={handleAnalyze}
+            isProcessing={isProcessing}
+            selectedFolder={selectedFolder}
+          />
 
-                {/* Custom Prompt Option */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Custom Search</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Find images that match your specific description
-                  </p>
-                  <div className="space-y-2">
-                    <Input
-                      type="text"
-                      placeholder="Enter your description..."
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      disabled={isProcessing}
-                    />
-                    <Button
-                      onClick={() => analyzeImages(true)}
-                      disabled={isProcessing || !prompt.trim()}
-                      className="w-full"
-                    >
-                      <Search className="w-4 h-4 mr-2" />
-                      {isProcessing ? "Processing..." : "Search Images"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
+          <ProgressIndicator progress={progress} />
 
-              {/* Processing Mode Selector */}
-              <div className="mt-6 flex justify-end items-center gap-2">
-                <Settings2 className="w-4 h-4 text-muted-foreground" />
-                <Select
-                  disabled={isProcessing}
-                  value={processingMode}
-                  onValueChange={(value: ProcessingMode) =>
-                    setProcessingMode(value)
-                  }
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Processing Mode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="batch">Batch Mode (Faster)</SelectItem>
-                    <SelectItem value="single">Single Mode (Slower)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {/* Progress Section */}
-          {progress && (
-            <div className="bg-card border rounded-lg p-6">
-              <div className="space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span>Processing: {progress.currentImage}</span>
-                  <span>{Math.round(progress.percentage)}%</span>
-                </div>
-                <Progress value={progress.percentage} className="w-full" />
-                <p className="text-sm text-muted-foreground">
-                  Processed {progress.current} of {progress.total} images
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Results Section */}
-          {results && (
-            <div className="bg-card border rounded-lg p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-semibold">Results</h2>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="select-all"
-                      checked={
-                        results.length > 0 &&
-                        selectedImages.size === results.length
-                      }
-                      onCheckedChange={toggleSelectAll}
-                    />
-                    <label htmlFor="select-all" className="text-sm">
-                      Select All
-                    </label>
-                  </div>
-                  {selectedImages.size > 0 && (
-                    <Button
-                      onClick={handleDownload}
-                      disabled={isDownloading}
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="w-4 h-4" />
-                      {isDownloading
-                        ? "Downloading..."
-                        : `Download (${selectedImages.size})`}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {results
-                  .sort((a, b) => b.score - a.score)
-                  .map((image, index) => {
-                    const isSelected = selectedImages.has(image.filename);
-                    return (
-                      <div
-                        key={image.filename}
-                        className={`group relative bg-muted rounded-lg overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
-                          isSelected ? "ring-2 ring-primary ring-offset-2" : ""
-                        }`}
-                      >
-                        <div
-                          className="absolute top-2 right-2 z-10 flex gap-2"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="bg-white/90 hover:bg-white"
-                            onClick={() =>
-                              setExpandedImage({
-                                base64: image.base64_image,
-                                filename: image.filename,
-                              })
-                            }
-                          >
-                            <Expand className="h-4 w-4" />
-                          </Button>
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() =>
-                              toggleImageSelection(image.filename)
-                            }
-                            className="bg-white/90 border-white/90"
-                          />
-                        </div>
-                        <div
-                          onClick={() => toggleImageSelection(image.filename)}
-                          className={`absolute inset-0 bg-black/10 transition-opacity duration-200 ${
-                            isSelected ? "opacity-100" : "opacity-0"
-                          }`}
-                        />
-                        <img
-                          src={`data:image/jpeg;base64,${image.base64_image}`}
-                          alt={image.filename}
-                          className="w-full aspect-square object-cover"
-                        />
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                          <p className="text-white font-medium">
-                            Rank: {index + 1}
-                          </p>
-                          <p className="text-white/80 text-sm">
-                            Score: {image.score.toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-
-          {/* Image Expand Dialog */}
-          <Dialog
-            open={expandedImage !== null}
-            onOpenChange={() => setExpandedImage(null)}
-          >
-            <DialogContent className="max-w-[95vw] max-h-[95vh] w-fit h-fit p-0 overflow-hidden flex items-center justify-center border-none">
-              {expandedImage && (
-                <div className="relative w-full h-full flex items-center justify-center bg-black/95">
-                  <DialogClose />
-                  <div className="relative max-w-full max-h-[85vh] flex flex-col">
-                    <img
-                      src={`data:image/jpeg;base64,${expandedImage.base64}`}
-                      alt={expandedImage.filename}
-                      className="object-contain max-h-[85vh] w-auto"
-                    />
-                  </div>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
+          <ImageResults results={results} onDownload={handleDownload} />
         </div>
       </main>
 
-      <footer className="border-t">
-        <div className="container mx-auto px-4 py-6 flex justify-between items-center">
-          <p className="text-sm text-muted-foreground">
-            © 2025 Image Ranker. All rights reserved.
-          </p>
-          <StatusIndicator />
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

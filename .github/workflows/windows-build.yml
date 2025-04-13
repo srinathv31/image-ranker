@@ -25,12 +25,6 @@ jobs:
             exit 1
           fi
 
-      - name: Create Git tag
-        shell: bash
-        run: |
-          git tag -a v${{ steps.version.outputs.version }} -m "Release v${{ steps.version.outputs.version }}"
-          git push origin v${{ steps.version.outputs.version }}
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:

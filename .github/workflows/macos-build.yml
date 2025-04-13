@@ -72,6 +72,6 @@ jobs:
       - name: Upload macOS Build
         uses: actions/upload-artifact@v4
         with:
-          name: image-ranker-macos-arm64-${{ steps.version.outputs.version }}
+          name: image-ranker-arm64-${{ steps.version.outputs.version }}.zip
           path: out/make/zip/darwin/arm64/image-ranker-darwin-arm64-${{ steps.version.outputs.version }}.zip
           if-no-files-found: error
